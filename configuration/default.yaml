@@ -1,0 +1,15 @@
+########################
+# DEFAULT CONFIGURATION
+########################
+
+# General
+DEBUG: True
+
+UPDATE_DATA: True
+DATA_PATH:
+SQLALCHEMY_DATABASE: postgresql://postgres:postgres@localhost:5432/MLOps
+
+MODEL_PARAMETERS_PATH:
+
+ESTIMATED_MODELS_PATH:
+
