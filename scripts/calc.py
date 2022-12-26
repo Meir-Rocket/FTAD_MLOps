@@ -1,3 +1,4 @@
+import joblib
 import pandas as pd
 
 from typing import Optional
@@ -8,15 +9,16 @@ from domain.enums import EModels, EModes, DataSheetIndexes
 from model.base import Dataset, Model, Pipe, base_estimators
 
 
-def train(data: pd.DataFrame, target: str, storage_path: str, model_id: int, model_params: Optional[dict]):
-    dataset = Dataset(data, 'data', target, storage_path)
+def train(data: pd.DataFrame, storage_path: str, model_id: int, model_params: Optional[dict]):
+    dataset = Dataset(data, 'data', 'edu_index', storage_path)
     model = Model(base_estimators[model_id], model_id, EModels(model_id).name, model_params)
     pipe = Pipe(dataset, model)
     pipe.fit()
 
 
-def predict():
-    pass
+def predict(model_path: str, prediction_path: str):
+    pipe = joblib.load(model_path)
+    pipe.predict(prediction_path)
 
 
 def get_data(cfg: dict):
@@ -156,8 +158,9 @@ def get_data(cfg: dict):
 
 def run_calc(cfg: dict, mode: int = 1, **kwargs):
     assert EModes.has_value(mode), 'CAN NOT UNDERSTAND YOUR QUERY!'
-    data = get_data(cfg)
+    kwargs = kwargs['kwargs']
     if mode == 1:
-        train(data, kwargs['target'], kwargs['storage_path'], kwargs['model_id'], kwargs['model_params'])
+        data = get_data(cfg)
+        train(data, kwargs['storage_path'], kwargs['model_id'], kwargs['model_params'])
     elif mode == 2:
-        predict()
+        predict(kwargs['model_path'], kwargs['prediction_path'])

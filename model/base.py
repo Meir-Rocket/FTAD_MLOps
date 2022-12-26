@@ -38,9 +38,11 @@ class Dataset:
         if path:
             x = self.data[self.features]
             y = self.data[self.target]
-            x_train, x_test, y_train, y_test = train_test_split(x, y, self.test_size)
-            pd.concat([x_train, y_train], axis=1).to_excel(f'{path}/train_{self.dataset_name}.xlsx')
-            pd.concat([x_test, y_test], axis=1).to_excel(f'{path}/test_{self.dataset_name}.xlsx')
+            x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=self.test_size)
+            now = datetime.now()
+            name = f'{now.year}.{now.month}.{now.day}_{now.hour}-{now.minute}-{now.second}_'
+            pd.concat([x_train, y_train], axis=1).to_excel(f'{path}/{name}train_{self.dataset_name}.xlsx')
+            pd.concat([x_test, y_test], axis=1).to_excel(f'{path}/{name}test_{self.dataset_name}.xlsx')
             return x_train, x_test, y_train, y_test
         return None, None, None, None
 
@@ -65,15 +67,15 @@ class Preprocessing:
     def __init__(self, dataset: pd.DataFrame, fill_func: Callable = np.mean):
         self.dataset = dataset
         self.num = self.dataset.select_dtypes(['int64', 'float64']).columns.tolist()
-        self.cat = self.dataset.select_dtypes(['obj']).columns.tolist()
+        self.cat = self.dataset.select_dtypes(['object', 'string']).columns.tolist()
         self.fill_func = fill_func
         self.column_transformer = ColumnTransformer([
             ('ohe', OneHotEncoder(handle_unknown="ignore"), self.cat),
             ('scaling', StandardScaler(), self.num)
         ])
-        self.to_binarize = np.array(self.dataset.x_train.columns)[
-            (self.dataset.x_train.isna().sum() / self.dataset.x_train.shape[0] > 0.5).values]
-        self.fill_values = dict(self.fill_func(self.dataset.x_train[self.num]))
+        self.to_binarize = np.array(self.dataset.columns)[
+            (self.dataset.isna().sum() / self.dataset.shape[0] > 0.5).values]
+        self.fill_values = dict(self.fill_func(self.dataset[self.num]))
 
     def fit_transform(self, x_train: pd.DataFrame) -> pd.DataFrame:
         x_train[self.cat] = x_train[self.cat].astype(str)
@@ -125,7 +127,7 @@ class Pipe:
 
     def predict(self, path: Optional[str] = None):
         x_test = self.preprocessing.transform(self.dataset.x_test)
-        y_predict = self.estimator.predict(x_test, self.dataset.y_test)
+        y_predict = self.estimator.predict(x_test)
         self.save_predict(y_predict, path)
 
     def save_predict(self, prediction: pd.Series, path: Optional[str] = None):
@@ -133,7 +135,7 @@ class Pipe:
             path = os.getcwd() + '/res/prediction'
         now = datetime.now()
         filename = f'{now.year}.{now.month}.{now.day}_{now.hour}-{now.minute}-{now.second}_{self.model.estimator_name}'
-        prediction.to_excel(path + '/' + filename + '_predictions.xlsx')
+        pd.Series(prediction).to_excel(path + '/' + filename + '_predictions.xlsx')
 
 
 base_estimators = {

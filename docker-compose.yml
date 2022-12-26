@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  db:
+    environment:
+      POSTGRES_DB: "MLOps"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+    ports:
+      - "5432:5432"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    ports:
+      - "5000:5000"
+    command: python app.py

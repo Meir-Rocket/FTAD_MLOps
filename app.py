@@ -31,11 +31,11 @@ class Data(Resource):
 
 estimated_models_parser_1 = reqparse.RequestParser()
 estimated_models_parser_1.add_argument('model', type=str, help='Model key (for more info check out available models)',
-                                       required=True, location='json', choices=list(EModels.name_values_dict().keys()))
+                                       required=True, location='args', choices=list(EModels.name_values_dict().keys()))
 
 estimated_models_parser_2 = reqparse.RequestParser()
 estimated_models_parser_2.add_argument('model', type=str, help='Model file name to delete', required=True,
-                                       location='json')
+                                       location='args')
 
 
 @api.route('/estimated_models', endpoint='estimated_models', methods=['GET', 'POST', 'DELETE'])
@@ -51,7 +51,7 @@ class EstimatedModels(Resource):
         if cfg['ESTIMATED_MODELS_PATH']:
             self.estimated_models_path = cfg['ESTIMATED_MODELS_PATH']
         else:
-            self.estimated_models_path = os.getcwd() + '/res'
+            self.estimated_models_path = os.getcwd() + '/res/estimated_models'
 
         if cfg['MODEL_PARAMETERS_PATH']:
             self.params_path = cfg['MODEL_PARAMETERS_PATH']
@@ -81,7 +81,9 @@ class EstimatedModels(Resource):
         })
     def post(self):
         args = estimated_models_parser_1.parse_args()
-        with open(self.params_path, 'r') as f:
+        model = args['model'].replace('_', '').title()
+        path = self.params_path + '/' + model + '_parameters.json'
+        with open(path, 'r') as f:
             params = dict(json.load(f))
         kwargs = {
             'storage_path': self.storage_path,
@@ -112,11 +114,11 @@ class EstimatedModels(Resource):
 
 params_parser_1 = reqparse.RequestParser()
 params_parser_1.add_argument('model', type=str, help='Model key (for more info check out available models)',
-                             required=True, location='json', choices=list(EModels.name_values_dict().keys()))
+                             required=True, location='args', choices=list(EModels.name_values_dict().keys()))
 
 params_parser_2 = reqparse.RequestParser()
 params_parser_2.add_argument('model', type=str, help='Model key (for more info check out available models)',
-                             required=True, location='json', choices=list(EModels.name_values_dict().keys()))
+                             required=True, location='args', choices=list(EModels.name_values_dict().keys()))
 params_parser_2.add_argument('model_params', type=str, help='Parameters for model estimation (ONLY FOR PUT)',
                              required=True, location='json', default='{}')
 
@@ -173,6 +175,53 @@ class ModelParameters(Resource):
             f.write(json_object)
             f.close()
         return 'Parameters updated.', 200
+
+
+predictions_parser = reqparse.RequestParser()
+predictions_parser.add_argument('model', type=str, help='Model key (for more info check out available models)',
+                                required=True, location='args')
+
+
+@api.route('/predictions', endpoint='predictions', methods=['POST'])
+class Predictions(Resource):
+    api: Api
+    estimated_models_path: str
+    predictions_path: str
+
+    def __init__(self, appi: Api = api):
+        self.api = appi
+        if cfg['ESTIMATED_MODELS_PATH']:
+            self.estimated_models_path = cfg['ESTIMATED_MODELS_PATH']
+        else:
+            self.estimated_models_path = os.getcwd() + '/res/estimated_models'
+
+        if cfg['PREDICTIONS_PATH']:
+            self.predictions_path = cfg['PREDICTIONS_PATH']
+        else:
+            self.predictions_path = os.getcwd() + '/res/predictions'
+        super().__init__(self.api)
+
+    @api.expect(predictions_parser)
+    @api.doc(
+        params={
+            'model': 'Model file name to use.'
+        },
+        responses={
+            200: 'OK',
+            404: 'File not found.'
+        })
+    def post(self):
+        args = predictions_parser.parse_args()
+        model = args['model']
+        try:
+            kwargs = {
+                'model_path': self.estimated_models_path + '/' + model,
+                'prediction_path': self.predictions_path
+            }
+            run_calc(cfg, mode=2, kwargs=kwargs)
+        except FileNotFoundError:
+            return 'Model not found', 404
+        return 'Predictions completed', 200
 
 
 if __name__ == '__main__':

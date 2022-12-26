@@ -14,8 +14,9 @@ from domain.logger import logged
 class DatabaseSession:
 
     def __init__(self, database: str, session: Optional[Session] = None):
+        engine = create_engine(database)
         session_maker = sessionmaker()
-        session_maker.configure(bind=database)
+        session_maker.configure(bind=engine)
         self.session = session_maker() if session is None else session
 
     def __enter__(self) -> Session:
